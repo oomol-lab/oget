@@ -2,6 +2,7 @@ package oget
 
 import (
 	"context"
+	"fmt"
 	"path/filepath"
 	"time"
 )
@@ -47,6 +48,16 @@ func (c *GettingConfig) dirPath() string {
 	return dirPath
 }
 
+func (c *GettingConfig) partFileName(index int) string {
+	var fileName string
+	if c.Parts == 1 {
+		fileName = fmt.Sprintf("%s.downloading", c.PartName)
+	} else {
+		fileName = fmt.Sprintf("%s.%d.%d.downloading", c.PartName, c.Parts, index)
+	}
+	return fileName
+}
+
 func (config *GettingConfig) standardize() GettingConfig {
 	c := *config
 	if c.Parts <= 0 {
@@ -54,6 +65,9 @@ func (config *GettingConfig) standardize() GettingConfig {
 	}
 	if c.PartName == "" {
 		c.PartName = c.fileName()
+	}
+	if c.PartsPath == "" {
+		c.PartsPath = c.dirPath()
 	}
 	return c
 }

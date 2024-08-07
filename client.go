@@ -23,13 +23,6 @@ func newGettingClient(maxIdleConnsPerHost int) *http.Client {
 	}
 }
 
-func newClient(client *http.Client) *http.Client {
-	if client == nil {
-		return http.DefaultClient
-	}
-	return client
-}
-
 // Prevents too many dials happening at once, because we've observed that that increases the thread
 // count in the app, to several times more than is actually necessary - presumably due to a blocking OS
 // call somewhere. It's tidier to avoid creating those excess OS threads.
