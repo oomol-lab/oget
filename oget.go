@@ -166,15 +166,28 @@ func (t *GettingTask) downloadToFile(req *http.Request, task *subTask) error {
 
 func (t *GettingTask) mergeFile(c *GettingConfig) error {
 	err := os.MkdirAll(c.dirPath(), 0755)
-
 	if err != nil {
-		return err
+		return errors.Wrapf(err, "make directory failed")
 	}
-	if c.Parts == 1 {
+	partPathList := []string{}
+	for i := 0; i < c.Parts; i++ {
 		partPath := filepath.Join(c.PartsPath, c.partFileName(0))
+		partPathList = append(partPathList, partPath)
+	}
+	if c.SHA512 != "" {
+		code, err := sha512OfFiles(&partPathList)
+		if err != nil {
+			return errors.Wrapf(err, "failed to get sha512 code")
+		}
+		if code != c.SHA512 {
+			return createSHA512Error("sha512 code does not match")
+		}
+	}
+	if len(partPathList) == 1 {
+		partPath := partPathList[0]
 		err := os.Rename(partPath, c.FilePath)
 		if err != nil {
-			return err
+			return errors.Wrapf(err, "failed to move file")
 		}
 	} else {
 		targetFile, err := os.Create(c.FilePath)
@@ -183,8 +196,7 @@ func (t *GettingTask) mergeFile(c *GettingConfig) error {
 		}
 		defer targetFile.Close()
 
-		for i := 0; i < c.Parts; i++ {
-			partPath := filepath.Join(c.PartsPath, c.partFileName(i))
+		for _, partPath := range partPathList {
 			subFile, err := os.Open(partPath)
 			if err != nil {
 				return errors.Wrapf(err, "failed to open file in download location")

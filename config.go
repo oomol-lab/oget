@@ -18,6 +18,7 @@ type RemoteFile struct {
 
 type GettingConfig struct {
 	FilePath  string
+	SHA512    string
 	PartsPath string
 	PartName  string
 	Parts     int
