@@ -131,7 +131,7 @@ func TestAll(t *testing.T) {
 		if lastEvent == nil {
 			t.Fatalf("no progress event")
 		}
-		if lastEvent.Phase != oget.Done {
+		if lastEvent.Phase != oget.ProgressPhaseDone {
 			t.Fatalf("unexpected phase: %d", lastEvent.Phase)
 		}
 		if phaseCount != 1 {

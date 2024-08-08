@@ -8,9 +8,9 @@ import (
 type ProgressPhase int
 
 const (
-	Downloading ProgressPhase = iota
-	Coping
-	Done
+	ProgressPhaseDownloading ProgressPhase = iota
+	ProgressPhaseCoping
+	ProgressPhaseDone
 )
 
 type ProgressListener func(event ProgressEvent)
@@ -29,7 +29,7 @@ type progress struct {
 
 func downloadingProgress(length int64, handler func(event ProgressEvent)) *progress {
 	return &progress{
-		phase:    Downloading,
+		phase:    ProgressPhaseDownloading,
 		length:   length,
 		handler:  handler,
 		progress: 0,
@@ -38,7 +38,7 @@ func downloadingProgress(length int64, handler func(event ProgressEvent)) *progr
 
 func (p *progress) toCopingPhase() *progress {
 	return &progress{
-		phase:    Coping,
+		phase:    ProgressPhaseCoping,
 		length:   p.length,
 		handler:  p.handler,
 		progress: 0,
@@ -51,7 +51,7 @@ func (p *progress) reader(proxy io.Reader) io.Reader {
 
 func (p *progress) fireDone() {
 	p.handler(ProgressEvent{
-		Phase:    Done,
+		Phase:    ProgressPhaseDone,
 		Total:    p.length,
 		Progress: p.length,
 	})
