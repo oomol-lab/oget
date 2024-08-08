@@ -7,6 +7,7 @@ import (
 	"os"
 )
 
+// returns the SHA512 code of the file.
 func SHA512(path string) (string, error) {
 	return sha512OfFiles(&[]string{path})
 }
@@ -27,6 +28,7 @@ func sha512OfFiles(pathList *[]string) (string, error) {
 	return hashStr, nil
 }
 
+// SHA512Error is the error type of SHA512.
 type SHA512Error struct {
 	message string
 }
