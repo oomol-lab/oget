@@ -171,7 +171,7 @@ func (t *GettingTask) mergeFile(c *GettingConfig) error {
 	}
 	partPathList := []string{}
 	for i := 0; i < c.Parts; i++ {
-		partPath := filepath.Join(c.PartsPath, c.partFileName(0))
+		partPath := filepath.Join(c.PartsPath, c.partFileName(i))
 		partPathList = append(partPathList, partPath)
 	}
 	if c.SHA512 != "" {
@@ -214,7 +214,7 @@ func (t *GettingTask) mergeFile(c *GettingConfig) error {
 
 func (t *GettingTask) cleanPartFiles(c *GettingConfig) error {
 	for i := 0; i < c.Parts; i++ {
-		partPath := filepath.Join(c.PartsPath, c.partFileName(0))
+		partPath := filepath.Join(c.PartsPath, c.partFileName(i))
 		if err := os.Remove(partPath); err != nil {
 			if !os.IsNotExist(err) {
 				return err
@@ -234,10 +234,12 @@ type subTask struct {
 func (t *GettingTask) getPartTask(c *GettingConfig, index int) *subTask {
 	chunkSize := t.contentLength / int64(c.Parts)
 	begin := chunkSize * int64(index)
-	end := begin + chunkSize - 1
+	end := int64(0)
 
-	if end >= t.contentLength-1 {
+	if index == c.Parts-1 {
 		end = t.contentLength - 1
+	} else {
+		end = begin + chunkSize - 1
 	}
 	filePath := filepath.Join(c.PartsPath, c.partFileName(index))
 	info, err := os.Stat(filePath)
