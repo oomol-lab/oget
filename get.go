@@ -42,7 +42,7 @@ type OGet struct {
 	ListenProgress ProgressListener
 }
 
-func (o OGet) Get() (func() error, error) {
+func (o *OGet) Get() (func() error, error) {
 	clean := func() error { return nil }
 	task, err := CreateGettingTask(&RemoteFile{
 		Context:             o.Context,
