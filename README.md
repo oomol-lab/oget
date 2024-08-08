@@ -13,10 +13,10 @@ $ go install github.com/oomol-lab/oget
 ```go
 import "github.com/oomol-lab/oget"
 
-_, err := OGet{
+_, err := (&OGet{
     URL:      "https://github.com/oomol-lab/oget/raw/main/tests/target.bin",
     FilePath: "/path/to/save/file.bin",
-}.Get()
+}).Get()
 
 if err != nil {
     panic(err)
@@ -32,7 +32,7 @@ It splits large files into multiple smaller parts for parallel downloading, then
 ```go
 import "github.com/oomol-lab/oget"
 
-_, err := OGet{
+_, err := (&OGet{
     URL:       "https://github.com/oomol-lab/oget/raw/main/tests/target.bin",
     // Path to store the final file
     FilePath:  "/path/to/save/file.bin",
@@ -40,7 +40,7 @@ _, err := OGet{
     Parts:     4,
     // If not specified, defaults to the same directory as `FilePath`
     PartsPath: "/path/to/save/temp/files",
-}.Get()
+}).Get()
 
 if err != nil {
     panic(err)
@@ -55,7 +55,7 @@ if err != nil {
 import "github.com/oomol-lab/oget"
 
 var mux sync.Mutex
-_, err := OGet{
+_, err := (&OGet{
     URL:            "https://github.com/oomol-lab/oget/raw/main/tests/target.bin",
     FilePath:       "/path/to/save/file.bin",
     ListenProgress: func(event oget.ProgressEvent) {
@@ -76,7 +76,7 @@ _, err := OGet{
         // Total number of bytes in this step
         total := event.Total
     },
-}.Get()
+}).Get()
 
 if err != nil {
     panic(err)
@@ -90,11 +90,11 @@ After downloading, the library performs a SHA512 checksum on the entire file. If
 ```go
 import "github.com/oomol-lab/oget"
 
-_, err := OGet{
+_, err := (&OGet{
     URL:      "https://github.com/oomol-lab/oget/raw/main/tests/target.bin",
     FilePath: "/path/to/save/file.bin",
     SHA512:    "d286fbb1fab9014fdbc543d09f54cb93da6e0f2c809e62ee0c81d69e4bf58eec44571fae192a8da9bc772ce1340a0d51ad638cdba6118909b555a12b005f2930",
-}.Get()
+}).Get()
 
 if err != nil {
     if sha512Error, ok := err.(oget.SHA512Error); ok {
@@ -113,11 +113,11 @@ import "github.com/oomol-lab/oget"
 success := false
 
 for i := 0; i < 10; i++ {
-    clean, err := OGet{
+    clean, err := (&OGet{
         URL:      "https://github.com/oomol-lab/oget/raw/main/tests/target.bin",
         FilePath: "/path/to/save/file.bin",
         Parts:    4,
-    }.Get()
+    }).Get()
     if err != nil {
         if sha512Error, ok := err.(oget.SHA512Error); ok {
             clean()
