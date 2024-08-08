@@ -1,4 +1,4 @@
-package oget
+package oget_test
 
 import (
 	"fmt"
@@ -11,10 +11,11 @@ import (
 	"strings"
 	"sync"
 	"testing"
+
+	"github.com/oomol-lab/oget"
 )
 
 func TestMain(m *testing.M) {
-
 	os.Exit(m.Run())
 }
 
@@ -28,7 +29,7 @@ func TestAll(t *testing.T) {
 	sha512Code := "d286fbb1fab9014fdbc543d09f54cb93da6e0f2c809e62ee0c81d69e4bf58eec44571fae192a8da9bc772ce1340a0d51ad638cdba6118909b555a12b005f2930"
 
 	t.Run("file info", func(t *testing.T) {
-		task, err := CreateGettingTask(&RemoteFile{
+		task, err := oget.CreateGettingTask(&oget.RemoteFile{
 			URL: fileURL,
 		})
 		if err != nil {
@@ -40,13 +41,13 @@ func TestAll(t *testing.T) {
 	})
 
 	t.Run("download without parts", func(t *testing.T) {
-		task, err := CreateGettingTask(&RemoteFile{
+		task, err := oget.CreateGettingTask(&oget.RemoteFile{
 			URL: fileURL,
 		})
 		if err != nil {
 			t.Fatalf("create task fail: %s", err)
 		}
-		_, err = task.Get(&GettingConfig{
+		_, err = task.Get(&oget.GettingConfig{
 			FilePath:  filepath.Join(outputPath, "target.bin"),
 			PartsPath: partsPath,
 			SHA512:    sha512Code,
@@ -57,7 +58,7 @@ func TestAll(t *testing.T) {
 	})
 
 	t.Run("download with parts", func(t *testing.T) {
-		task, err := CreateGettingTask(&RemoteFile{
+		task, err := oget.CreateGettingTask(&oget.RemoteFile{
 			URL: fileURL,
 		})
 		if err != nil {
@@ -65,7 +66,7 @@ func TestAll(t *testing.T) {
 		}
 		savedFilePath := filepath.Join(outputPath, "target-parts.bin")
 
-		_, err = task.Get(&GettingConfig{
+		_, err = task.Get(&oget.GettingConfig{
 			FilePath:  savedFilePath,
 			PartsPath: partsPath,
 			Parts:     4,
@@ -74,7 +75,7 @@ func TestAll(t *testing.T) {
 		if err != nil {
 			t.Fatalf("download file: %s", err)
 		}
-		savedFileCode, err := SHA512(savedFilePath)
+		savedFileCode, err := oget.SHA512(savedFilePath)
 
 		if err != nil {
 			t.Fatalf("get code of sha512 fail: %s", err)
@@ -85,7 +86,7 @@ func TestAll(t *testing.T) {
 	})
 
 	t.Run("download with progress", func(t *testing.T) {
-		task, err := CreateGettingTask(&RemoteFile{
+		task, err := oget.CreateGettingTask(&oget.RemoteFile{
 			URL: fileURL,
 		})
 		if err != nil {
@@ -93,14 +94,14 @@ func TestAll(t *testing.T) {
 		}
 		var mux sync.Mutex
 		savedFilePath := filepath.Join(outputPath, "target-parts.bin")
-		events := []ProgressEvent{}
+		events := []oget.ProgressEvent{}
 
-		_, err = task.Get(&GettingConfig{
+		_, err = task.Get(&oget.GettingConfig{
 			FilePath:  savedFilePath,
 			PartsPath: partsPath,
 			Parts:     4,
 			SHA512:    sha512Code,
-			ListenProgress: func(event ProgressEvent) {
+			ListenProgress: func(event oget.ProgressEvent) {
 				mux.Lock()
 				events = append(events, event)
 				mux.Unlock()
@@ -109,7 +110,7 @@ func TestAll(t *testing.T) {
 		if err != nil {
 			t.Fatalf("download file: %s", err)
 		}
-		var lastEvent *ProgressEvent = nil
+		var lastEvent *oget.ProgressEvent = nil
 		var phaseCount int = 0
 
 		for _, event := range events {
@@ -130,7 +131,7 @@ func TestAll(t *testing.T) {
 		if lastEvent == nil {
 			t.Fatalf("no progress event")
 		}
-		if lastEvent.Phase != Done {
+		if lastEvent.Phase != oget.Done {
 			t.Fatalf("unexpected phase: %d", lastEvent.Phase)
 		}
 		if phaseCount != 1 {
@@ -144,7 +145,7 @@ func TestAll(t *testing.T) {
 			if mustFail {
 				url = fmt.Sprintf("%s/target_fail.bin", server.URL)
 			}
-			task, err := CreateGettingTask(&RemoteFile{
+			task, err := oget.CreateGettingTask(&oget.RemoteFile{
 				URL: url,
 			})
 			if err != nil {
@@ -152,7 +153,7 @@ func TestAll(t *testing.T) {
 			}
 			savedFilePath := filepath.Join(outputPath, "target-retry.bin")
 
-			_, err = task.Get(&GettingConfig{
+			_, err = task.Get(&oget.GettingConfig{
 				FilePath:  savedFilePath,
 				PartsPath: partsPath,
 				Parts:     3,
@@ -174,7 +175,7 @@ func TestAll(t *testing.T) {
 }
 
 func setupDownloadPath(t *testing.T) (string, string) {
-	downloadingPath, err := filepath.Abs("./downloading")
+	downloadingPath, err := filepath.Abs("../downloading")
 
 	if err != nil {
 		t.Errorf("Error getting absolute path for %s", err)
@@ -201,7 +202,7 @@ func setupDownloadPath(t *testing.T) (string, string) {
 }
 
 func createTestServer(t *testing.T) *httptest.Server {
-	targetPath, err := filepath.Abs("./tests/target.bin")
+	targetPath, err := filepath.Abs("./target.bin")
 
 	if err != nil {
 		t.Errorf("Error getting absolute path for %s", err)
