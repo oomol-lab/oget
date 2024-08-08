@@ -13,19 +13,11 @@ $ go install github.com/oomol-lab/oget
 ```go
 import "github.com/oomol-lab/oget"
 
-oget.OGet {
-    FilePath: "/path/to/save/file.bin"
-}
-
-task, err := oget.CreateGettingTask(&oget.RemoteFile{
-    URL: "https://github.com/oomol-lab/oget/raw/main/tests/target.bin",
-})
-if err != nil {
-    panic(err)
-}
-_, err = task.Get(&oget.GettingConfig{
+_, err := OGet{
+    URL:      "https://github.com/oomol-lab/oget/raw/main/tests/target.bin",
     FilePath: "/path/to/save/file.bin",
-})
+}.Get()
+
 if err != nil {
     panic(err)
 }
@@ -40,20 +32,16 @@ It splits large files into multiple smaller parts for parallel downloading, then
 ```go
 import "github.com/oomol-lab/oget"
 
-task, err := oget.CreateGettingTask(&oget.RemoteFile{
-    URL: "https://github.com/oomol-lab/oget/raw/main/tests/target.bin",
-})
-if err != nil {
-    panic(err)
-}
-_, err = task.Get(&oget.GettingConfig{
+_, err := OGet{
+    URL:       "https://github.com/oomol-lab/oget/raw/main/tests/target.bin",
     // Path to store the final file
-    FilePath: "/path/to/save/file.bin",
+    FilePath:  "/path/to/save/file.bin",
     // Number of file parts for splitting and parallel downloading
     Parts:     4,
     // If not specified, defaults to the same directory as `FilePath`
     PartsPath: "/path/to/save/temp/files",
-})
+}.Get()
+
 if err != nil {
     panic(err)
 }
@@ -66,15 +54,10 @@ if err != nil {
 ```go
 import "github.com/oomol-lab/oget"
 
-task, err := oget.CreateGettingTask(&oget.RemoteFile{
-    URL: "https://github.com/oomol-lab/oget/raw/main/tests/target.bin",
-})
-if err != nil {
-    panic(err)
-}
 var mux sync.Mutex
-_, err = task.Get(&oget.GettingConfig{
-    FilePath: "/path/to/save/file.bin",
+_, err := OGet{
+    URL:            "https://github.com/oomol-lab/oget/raw/main/tests/target.bin",
+    FilePath:       "/path/to/save/file.bin",
     ListenProgress: func(event oget.ProgressEvent) {
         // Callback may be invoked in multiple threads
         // Use a lock to ensure thread safety
@@ -93,7 +76,8 @@ _, err = task.Get(&oget.GettingConfig{
         // Total number of bytes in this step
         total := event.Total
     },
-})
+}.Get()
+
 if err != nil {
     panic(err)
 }
@@ -106,16 +90,12 @@ After downloading, the library performs a SHA512 checksum on the entire file. If
 ```go
 import "github.com/oomol-lab/oget"
 
-task, err := oget.CreateGettingTask(&oget.RemoteFile{
-    URL: "https://github.com/oomol-lab/oget/raw/main/tests/target.bin",
-})
-if err != nil {
-    panic(err)
-}
-_, err = task.Get(&oget.GettingConfig{
+_, err := OGet{
+    URL:      "https://github.com/oomol-lab/oget/raw/main/tests/target.bin",
     FilePath: "/path/to/save/file.bin",
     SHA512:    "d286fbb1fab9014fdbc543d09f54cb93da6e0f2c809e62ee0c81d69e4bf58eec44571fae192a8da9bc772ce1340a0d51ad638cdba6118909b555a12b005f2930",
-})
+}.Get()
+
 if err != nil {
     if sha512Error, ok := err.(oget.SHA512Error); ok {
         // Failed due to SHA512 verification failure
@@ -127,6 +107,32 @@ if err != nil {
 ### Resuming Downloads
 
 During a download, oget creates a temporary file with the extension `*.downloading` (regardless of whether it's split into parts). If a download fails due to network issues and the temporary file is not deleted, resuming the download will retain the progress from the previous attempt. To implement resuming downloads, ignore download failures caused by network issues and retry the download.
+
+```go
+import "github.com/oomol-lab/oget"
+success := false
+
+for i := 0; i < 10; i++ {
+    clean, err := OGet{
+        URL:      "https://github.com/oomol-lab/oget/raw/main/tests/target.bin",
+        FilePath: "/path/to/save/file.bin",
+        Parts:    4,
+    }.Get()
+    if err != nil {
+        if sha512Error, ok := err.(oget.SHA512Error); ok {
+            clean()
+            panic(sha512Error)
+        }
+        fmt.Printf("download failed with error and retry %s", err)
+    } else {
+        success = true
+    }
+}
+if !success {
+    panic("download fail")
+}
+```
+The above method will send a request to the server for the file meta each time you retry. If you don't want this meaningless request, you can use the following method.
 
 First, create a `task` object using `oget.CreateGettingTask`. This step only fetches file metadata from the server without starting the download. If this step fails, it should be considered a complete failure of the download task.
 
