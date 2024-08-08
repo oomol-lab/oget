@@ -106,7 +106,9 @@ func (t *GettingTask) Get(config *GettingConfig) (func() error, error) {
 			if err != nil {
 				return err
 			}
-			req.Header.Set("Range", fmt.Sprintf("bytes=%d-%d", task.begin, task.end))
+			if len(tasks) > 1 || !tasks[0].overrideFile {
+				req.Header.Set("Range", fmt.Sprintf("bytes=%d-%d", task.begin, task.end))
+			}
 			if err := t.downloadToFile(req, task); err != nil {
 				return err
 			}
@@ -158,8 +160,14 @@ func (t *GettingTask) downloadToFile(req *http.Request, task *subTask) error {
 	}
 	defer output.Close()
 
-	if _, err := io.Copy(output, resp.Body); err != nil {
+	wantSize := task.end - task.begin + 1
+	written, err := io.Copy(output, resp.Body)
+
+	if err != nil {
 		return errors.Wrapf(err, "failed to write response body")
+	}
+	if written < wantSize {
+		return errors.New("download bytes is less than expected")
 	}
 	return nil
 }

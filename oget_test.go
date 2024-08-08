@@ -1,8 +1,14 @@
 package oget
 
 import (
+	"fmt"
+	"io"
+	"net/http"
+	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"strconv"
+	"strings"
 	"testing"
 )
 
@@ -12,11 +18,13 @@ func TestMain(m *testing.M) {
 }
 
 func TestAll(t *testing.T) {
-
-	fileURL := "https://raw.githubusercontent.com/oomol-lab/ovm-js/d90e10fddc3750fc69c3e00128bcfa03823f7af7/README.md"
-	fileLength := int64(5003)
-	sha512Code := "562f213fc1bd2ad1bc70bb54a332b3aeaf5338b85d4bbe6b512fa4fc0e379c655054081292d38ea8bf3e5ec0cecfe263c3918567caa5937aa0035d3c40a8feb8"
 	outputPath, partsPath := setupDownloadPath(t)
+	server := createTestServer(t)
+	defer server.Close()
+
+	fileURL := fmt.Sprintf("%s/target.bin", server.URL)
+	fileLength := int64(71680)
+	sha512Code := "d286fbb1fab9014fdbc543d09f54cb93da6e0f2c809e62ee0c81d69e4bf58eec44571fae192a8da9bc772ce1340a0d51ad638cdba6118909b555a12b005f2930"
 
 	t.Run("file info", func(t *testing.T) {
 		task, err := CreateGettingTask(&RemoteFile{
@@ -38,7 +46,7 @@ func TestAll(t *testing.T) {
 			t.Fatalf("create task fail: %s", err)
 		}
 		_, err = task.Get(&GettingConfig{
-			FilePath:  filepath.Join(outputPath, "README.md"),
+			FilePath:  filepath.Join(outputPath, "target.bin"),
 			PartsPath: partsPath,
 			SHA512:    sha512Code,
 		})
@@ -54,7 +62,7 @@ func TestAll(t *testing.T) {
 		if err != nil {
 			t.Fatalf("create task fail: %s", err)
 		}
-		savedFilePath := filepath.Join(outputPath, "NEXT-README.md")
+		savedFilePath := filepath.Join(outputPath, "target-parts.bin")
 
 		_, err = task.Get(&GettingConfig{
 			FilePath:  savedFilePath,
@@ -72,6 +80,40 @@ func TestAll(t *testing.T) {
 		}
 		if sha512Code != savedFileCode {
 			t.Fatalf("unexpected sha512 code: %s", savedFileCode)
+		}
+	})
+
+	t.Run("check response content length and retry utils success", func(t *testing.T) {
+		tryDownload := func(mustFail bool) error {
+			url := fileURL
+			if mustFail {
+				url = fmt.Sprintf("%s/target_fail.bin", server.URL)
+			}
+			task, err := CreateGettingTask(&RemoteFile{
+				URL: url,
+			})
+			if err != nil {
+				t.Fatalf("create task fail: %s", err)
+			}
+			savedFilePath := filepath.Join(outputPath, "target-retry.bin")
+
+			_, err = task.Get(&GettingConfig{
+				FilePath:  savedFilePath,
+				PartsPath: partsPath,
+				Parts:     3,
+				SHA512:    sha512Code,
+			})
+			return err
+		}
+		err := tryDownload(true)
+
+		if fmt.Sprintf("%s", err) != "download bytes is less than expected" {
+			t.Fatalf("unexpected error: %s", err)
+		}
+		err = tryDownload(false)
+
+		if err != nil {
+			t.Fatalf("download file: %s", err)
 		}
 	})
 }
@@ -101,4 +143,59 @@ func setupDownloadPath(t *testing.T) (string, string) {
 		t.Fatalf("Error creating directory: %s", err)
 	}
 	return outputPath, partsPath
+}
+
+func createTestServer(t *testing.T) *httptest.Server {
+	targetPath, err := filepath.Abs("./tests/target.bin")
+
+	if err != nil {
+		t.Errorf("Error getting absolute path for %s", err)
+	}
+	mux := http.NewServeMux()
+	mux.HandleFunc("/target.bin", func(w http.ResponseWriter, r *http.Request) {
+		http.ServeFile(w, r, targetPath)
+	})
+	mux.HandleFunc("/target_fail.bin", func(w http.ResponseWriter, r *http.Request) {
+		file, err := os.Open(targetPath)
+		if err != nil {
+			http.Error(w, fmt.Sprintf("Error opening file: %s", err), http.StatusInternalServerError)
+			return
+		}
+		defer file.Close()
+
+		fileInfo, err := file.Stat()
+
+		if err != nil {
+			http.Error(w, fmt.Sprintf("Error getting file info: %s", err), http.StatusInternalServerError)
+			return
+		}
+		maxDownloadSize := fileInfo.Size() / 4
+
+		w.Header().Set("Content-Disposition", "attachment; filename=target_fail.bin")
+		w.Header().Set("Content-Type", "application/octet-stream")
+		w.Header().Set("Accept-Ranges", "bytes")
+
+		rangeHeader := r.Header.Get("Range")
+
+		if rangeHeader != "" {
+			ranges := strings.Split(rangeHeader, "=")
+			offset := strings.Split(ranges[1], "-")
+			startByte, _ := strconv.Atoi(offset[0])
+			endByte, _ := strconv.Atoi(offset[1])
+
+			w.Header().Set("Content-Range", fmt.Sprintf("bytes %d-%d/%d", startByte, endByte, fileInfo.Size()))
+
+			rangeLength := int64(endByte - startByte + 1)
+			copySize := rangeLength
+
+			if rangeLength > maxDownloadSize {
+				copySize = maxDownloadSize
+			}
+			_, _ = file.Seek(int64(startByte), io.SeekStart)
+			_, _ = io.CopyN(w, file, copySize)
+		} else {
+			http.ServeContent(w, r, fileInfo.Name(), fileInfo.ModTime(), file)
+		}
+	})
+	return httptest.NewServer(mux)
 }
