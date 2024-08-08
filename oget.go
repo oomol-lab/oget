@@ -26,6 +26,7 @@ type GettingTask struct {
 	timeout       time.Duration
 }
 
+// creates a new GettingTask. will access the URL to get the file information.
 func CreateGettingTask(config *RemoteFile) (*GettingTask, error) {
 	c := config.standardize()
 	client := newGettingClient(c.MaxIdleConnsPerHost)
@@ -74,10 +75,12 @@ func CreateGettingTask(config *RemoteFile) (*GettingTask, error) {
 	return task, nil
 }
 
+// returns the content length of the file.
 func (t *GettingTask) ContentLength() int64 {
 	return t.contentLength
 }
 
+// downloads the file.
 func (t *GettingTask) Get(config *GettingConfig) (func() error, error) {
 	var prog *progress
 	c := config.standardize()

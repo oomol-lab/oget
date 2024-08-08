@@ -8,16 +8,25 @@ import (
 type ProgressPhase int
 
 const (
+	// ProgressPhaseDownloading is the phase of downloading.
 	ProgressPhaseDownloading ProgressPhase = iota
+	// ProgressPhaseCoping is the phase of merging from parts of temp files.
 	ProgressPhaseCoping
+	// ProgressPhaseDone is the phase of downloading done.
 	ProgressPhaseDone
 )
 
+// ProgressListener is the listener of the progress.
 type ProgressListener func(event ProgressEvent)
+
+// ProgressEvent is the event of the progress.
 type ProgressEvent struct {
-	Phase    ProgressPhase
+	// the phase of the progress.
+	Phase ProgressPhase
+	// the progress of the downloading (bytes).
 	Progress int64
-	Total    int64
+	// the total length of the downloading (bytes).
+	Total int64
 }
 
 type progress struct {

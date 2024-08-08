@@ -2,7 +2,7 @@ name: Build Project
 on:
   pull_request:
     branches:
-      - "main"
+      - "*"
 
 jobs:
   build-and-test:
