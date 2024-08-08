@@ -17,11 +17,12 @@ type RemoteFile struct {
 }
 
 type GettingConfig struct {
-	FilePath  string
-	SHA512    string
-	PartsPath string
-	PartName  string
-	Parts     int
+	FilePath       string
+	SHA512         string
+	PartsPath      string
+	PartName       string
+	Parts          int
+	ListenProgress ProgressListener
 }
 
 func (config *RemoteFile) standardize() RemoteFile {

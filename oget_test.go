@@ -9,6 +9,7 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
+	"sync"
 	"testing"
 )
 
@@ -80,6 +81,60 @@ func TestAll(t *testing.T) {
 		}
 		if sha512Code != savedFileCode {
 			t.Fatalf("unexpected sha512 code: %s", savedFileCode)
+		}
+	})
+
+	t.Run("download with progress", func(t *testing.T) {
+		task, err := CreateGettingTask(&RemoteFile{
+			URL: fileURL,
+		})
+		if err != nil {
+			t.Fatalf("create task fail: %s", err)
+		}
+		var mux sync.Mutex
+		savedFilePath := filepath.Join(outputPath, "target-parts.bin")
+		events := []ProgressEvent{}
+
+		_, err = task.Get(&GettingConfig{
+			FilePath:  savedFilePath,
+			PartsPath: partsPath,
+			Parts:     4,
+			SHA512:    sha512Code,
+			ListenProgress: func(event ProgressEvent) {
+				mux.Lock()
+				events = append(events, event)
+				mux.Unlock()
+			},
+		})
+		if err != nil {
+			t.Fatalf("download file: %s", err)
+		}
+		var lastEvent *ProgressEvent = nil
+		var phaseCount int = 0
+
+		for _, event := range events {
+			if lastEvent != nil {
+				if event.Phase < lastEvent.Phase {
+					t.Fatalf("unexpected phase: %d", event.Phase)
+				}
+				if event.Progress < lastEvent.Progress {
+					t.Fatalf("unexpected progress: %d", event.Progress)
+				}
+				if event.Phase > lastEvent.Phase {
+					phaseCount = 0
+				}
+			}
+			lastEvent = &event
+			phaseCount += 1
+		}
+		if lastEvent == nil {
+			t.Fatalf("no progress event")
+		}
+		if lastEvent.Phase != Done {
+			t.Fatalf("unexpected phase: %d", lastEvent.Phase)
+		}
+		if phaseCount != 1 {
+			t.Fatalf("unexpected phase count: %d", phaseCount)
 		}
 	})
 

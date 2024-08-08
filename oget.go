@@ -79,9 +79,13 @@ func (t *GettingTask) ContentLength() int64 {
 }
 
 func (t *GettingTask) Get(config *GettingConfig) (func() error, error) {
+	var prog *progress
 	c := config.standardize()
 	tasks := []*subTask{}
 
+	if c.ListenProgress != nil {
+		prog = downloadingProgress(t.contentLength, c.ListenProgress)
+	}
 	for i := 0; i < c.Parts; i++ {
 		task := t.getPartTask(&c, i)
 		if task != nil {
@@ -109,7 +113,7 @@ func (t *GettingTask) Get(config *GettingConfig) (func() error, error) {
 			if len(tasks) > 1 || !tasks[0].overrideFile {
 				req.Header.Set("Range", fmt.Sprintf("bytes=%d-%d", task.begin, task.end))
 			}
-			if err := t.downloadToFile(req, task); err != nil {
+			if err := t.downloadToFile(req, task, prog); err != nil {
 				return err
 			}
 			return nil
@@ -118,10 +122,18 @@ func (t *GettingTask) Get(config *GettingConfig) (func() error, error) {
 	if err := eg.Wait(); err != nil {
 		return clean, err
 	}
-	if err := t.mergeFile(&c); err != nil {
+	if prog != nil {
+		prog = prog.toCopingPhase()
+	}
+	if err := t.mergeFile(&c, prog); err != nil {
 		return clean, err
 	}
-	return func() error { return nil }, nil
+	if prog != nil {
+		prog.fireDone()
+	}
+	clean = func() error { return nil }
+
+	return clean, nil
 }
 
 func (t *GettingTask) createRequest(ctx context.Context) (*http.Request, error) {
@@ -140,7 +152,7 @@ func (t *GettingTask) createRequest(ctx context.Context) (*http.Request, error) 
 	return req, nil
 }
 
-func (t *GettingTask) downloadToFile(req *http.Request, task *subTask) error {
+func (t *GettingTask) downloadToFile(req *http.Request, task *subTask, prog *progress) error {
 	resp, err := t.client.Do(req)
 
 	if err != nil {
@@ -160,19 +172,23 @@ func (t *GettingTask) downloadToFile(req *http.Request, task *subTask) error {
 	}
 	defer output.Close()
 
-	wantSize := task.end - task.begin + 1
-	written, err := io.Copy(output, resp.Body)
+	var respReader io.Reader = resp.Body
+	if prog != nil {
+		respReader = prog.reader(respReader)
+	}
+	written, err := io.Copy(output, respReader)
 
 	if err != nil {
 		return errors.Wrapf(err, "failed to write response body")
 	}
+	wantSize := task.end - task.begin + 1
 	if written < wantSize {
 		return errors.New("download bytes is less than expected")
 	}
 	return nil
 }
 
-func (t *GettingTask) mergeFile(c *GettingConfig) error {
+func (t *GettingTask) mergeFile(c *GettingConfig, prog *progress) error {
 	err := os.MkdirAll(c.dirPath(), 0755)
 	if err != nil {
 		return errors.Wrapf(err, "make directory failed")
@@ -210,7 +226,12 @@ func (t *GettingTask) mergeFile(c *GettingConfig) error {
 				return errors.Wrapf(err, "failed to open file in download location")
 			}
 			defer subFile.Close()
-			_, err = io.Copy(targetFile, subFile)
+
+			var reader io.Reader = subFile
+			if prog != nil {
+				reader = prog.reader(reader)
+			}
+			_, err = io.Copy(targetFile, reader)
 			if err != nil {
 				errors.Wrapf(err, "failed to copy part of file")
 			}
