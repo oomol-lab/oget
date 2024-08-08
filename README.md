@@ -13,6 +13,10 @@ $ go install github.com/oomol-lab/oget
 ```go
 import "github.com/oomol-lab/oget"
 
+oget.OGet {
+    FilePath: "/path/to/save/file.bin"
+}
+
 task, err := oget.CreateGettingTask(&oget.RemoteFile{
     URL: "https://github.com/oomol-lab/oget/raw/main/tests/target.bin",
 })
