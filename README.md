@@ -1,6 +1,6 @@
 # oget
 
-oget is a Golang download library. It supports parallel downloads, resuming after failures, SHA512 verification, and download progress monitoring.
+oget is a Golang download library. It supports parallel downloads, resuming after failures, Hash verification, and download progress monitoring.
 
 ## Installation
 
@@ -83,22 +83,23 @@ if err != nil {
 }
 ```
 
-### SHA512 Verification
+### Hash Verification
 
-After downloading, the library performs a SHA512 checksum on the entire file. If the checksum fails, an `oget.SHA512Error` is thrown.
+After downloading, the library performs a Hash checksum on the entire file. If the checksum fails, an `oget.HashError` is thrown.
 
 ```go
 import "github.com/oomol-lab/oget"
 
-_, err := (&OGet{
+_, err := (&oget.OGet{
     URL:      "https://github.com/oomol-lab/oget/raw/main/tests/target.bin",
     FilePath: "/path/to/save/file.bin",
-    SHA512:    "d286fbb1fab9014fdbc543d09f54cb93da6e0f2c809e62ee0c81d69e4bf58eec44571fae192a8da9bc772ce1340a0d51ad638cdba6118909b555a12b005f2930",
+	HashType: oget.SHA512,
+    Hash:    "d286fbb1fab9014fdbc543d09f54cb93da6e0f2c809e62ee0c81d69e4bf58eec44571fae192a8da9bc772ce1340a0d51ad638cdba6118909b555a12b005f2930",
 }).Get()
 
 if err != nil {
-    if sha512Error, ok := err.(oget.SHA512Error); ok {
-        // Failed due to SHA512 verification failure
+    if hashError, ok := err.(oget.HashError); ok {
+        // Failed due to hash verification failure
     }
     panic(err)
 }
@@ -113,15 +114,15 @@ import "github.com/oomol-lab/oget"
 success := false
 
 for i := 0; i < 10; i++ {
-    clean, err := (&OGet{
+    clean, err := (&oget.OGet{
         URL:      "https://github.com/oomol-lab/oget/raw/main/tests/target.bin",
         FilePath: "/path/to/save/file.bin",
         Parts:    4,
     }).Get()
     if err != nil {
-        if sha512Error, ok := err.(oget.SHA512Error); ok {
+        if hashError, ok := err.(oget.HashError); ok {
             clean()
-            panic(sha512Error)
+            panic(hashError)
         }
         fmt.Printf("download failed with error and retry %s", err)
     } else {
@@ -147,7 +148,7 @@ if err != nil {
 }
 ```
 
-Then, call `task.Get()` to initiate the download. Check if the error is of type `oget.SHA512Error`. If not, it is likely due to network issues and should be retried.
+Then, call `task.Get()` to initiate the download. Check if the error is of type `oget.HashError`. If not, it is likely due to network issues and should be retried.
 
 Note that the first return value of `task.Get()` is a function `clean` that deletes the temporary download files. Call it to free up disk space if you don't want to keep these files for the next download attempt after a download failure.
 
@@ -160,9 +161,9 @@ for i := 0; i < 10; i++ {
         Parts:    4,
     })
     if err != nil {
-        if sha512Error, ok := err.(oget.SHA512Error); ok {
+        if hashError, ok := err.(oget.HashError); ok {
             clean()
-            panic(sha512Error)
+            panic(hashError)
         }
         fmt.Printf("download failed with error and retry %s", err)
     } else {

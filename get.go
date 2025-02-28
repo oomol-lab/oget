@@ -25,9 +25,10 @@ type OGet struct {
 	// the maximum number of idle (keep-alive) connections to keep per-host.
 	// the default is 16.
 	MaxIdleConnsPerHost int
-	// the SHA512 code of the file.
-	// if the code is empty, the file will not be checked.
-	SHA512 string
+	// the Hash code of the file.
+	// if the hash is empty, the file will not be checked.
+	HashType HashType
+	Hash     string
 	// PartsPath is the path to save the temp files of downloaded parts.
 	// if the value is empty, the temp files will be saved in the same directory as the FilePath.
 	PartsPath string
@@ -57,7 +58,8 @@ func (o *OGet) Get() (func() error, error) {
 	}
 	return task.Get(&GettingConfig{
 		FilePath:       o.FilePath,
-		SHA512:         o.SHA512,
+		HashType:       o.HashType,
+		Hash:           o.Hash,
 		PartsPath:      o.PartsPath,
 		PartName:       o.PartName,
 		Parts:          o.Parts,

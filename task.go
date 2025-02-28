@@ -7,9 +7,8 @@ import (
 	"mime"
 	"net/http"
 	"os"
-	"time"
-
 	"path/filepath"
+	"time"
 
 	"github.com/pkg/errors"
 	"golang.org/x/sync/errgroup"
@@ -201,15 +200,16 @@ func (t *GettingTask) mergeFile(c *GettingConfig, prog *progress) error {
 		partPath := filepath.Join(c.PartsPath, c.partFileName(i))
 		partPathList = append(partPathList, partPath)
 	}
-	if c.SHA512 != "" {
-		code, err := sha512OfFiles(&partPathList)
+	if c.Hash != "" && supportHashType(c.HashType) {
+		code, err := shaOfFiles(&partPathList, c.HashType)
 		if err != nil {
-			return errors.Wrapf(err, "failed to get sha512 code")
+			return errors.Wrapf(err, fmt.Sprintf("failed to get %s code", c.HashType))
 		}
-		if code != c.SHA512 {
-			return createSHA512Error("sha512 code does not match")
+		if code != c.Hash {
+			return createHashError(fmt.Sprintf("%s code does not match", c.HashType))
 		}
 	}
+
 	if len(partPathList) == 1 {
 		partPath := partPathList[0]
 		err := os.Rename(partPath, c.FilePath)

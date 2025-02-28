@@ -50,7 +50,8 @@ func TestAll(t *testing.T) {
 		_, err = task.Get(&oget.GettingConfig{
 			FilePath:  filepath.Join(outputPath, "target.bin"),
 			PartsPath: partsPath,
-			SHA512:    sha512Code,
+			HashType:  oget.SHA512,
+			Hash:      sha512Code,
 		})
 		if err != nil {
 			t.Fatalf("download file: %s", err)
@@ -70,12 +71,13 @@ func TestAll(t *testing.T) {
 			FilePath:  savedFilePath,
 			PartsPath: partsPath,
 			Parts:     4,
-			SHA512:    sha512Code,
+			HashType:  oget.SHA512,
+			Hash:      sha512Code,
 		})
 		if err != nil {
 			t.Fatalf("download file: %s", err)
 		}
-		savedFileCode, err := oget.SHA512(savedFilePath)
+		savedFileCode, err := oget.SHA(savedFilePath, oget.SHA512)
 
 		if err != nil {
 			t.Fatalf("get code of sha512 fail: %s", err)
@@ -100,7 +102,8 @@ func TestAll(t *testing.T) {
 			FilePath:  savedFilePath,
 			PartsPath: partsPath,
 			Parts:     4,
-			SHA512:    sha512Code,
+			HashType:  oget.SHA512,
+			Hash:      sha512Code,
 			ListenProgress: func(event oget.ProgressEvent) {
 				mux.Lock()
 				events = append(events, event)
@@ -157,7 +160,8 @@ func TestAll(t *testing.T) {
 				FilePath:  savedFilePath,
 				PartsPath: partsPath,
 				Parts:     3,
-				SHA512:    sha512Code,
+				HashType:  oget.SHA512,
+				Hash:      sha512Code,
 			})
 			return err
 		}
